@@ -1,0 +1,41 @@
+{
+  "name": "canaryweave",
+  "version": "0.1.0",
+  "description": "A honeytoken-based data-leak detector: generate unique canary tokens, seed them into files you watch, and check whether they've leaked onto public GitHub.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "canaryweave": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run --exclude \"**/*.live.test.ts\"",
+    "test:watch": "vitest --exclude \"**/*.live.test.ts\"",
+    "test:live": "vitest run tests/github.live.test.ts",
+    "test:all": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "honeytoken",
+    "canary-token",
+    "leak-detection",
+    "security",
+    "github-search"
+  ],
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.2",
+    "vitest": "^5.0.1"
+  }
+}

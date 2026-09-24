@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# CanaryWeave local runtime data (registry + audit log) is user data, not source.
+# Ignored by default so nobody accidentally commits real canary tokens.
+.canaryweave/
+
+# Local env files that might carry a GITHUB_TOKEN
+.env
+.env.local
