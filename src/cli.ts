@@ -104,6 +104,7 @@ program
     }
 
     let anyHit = false;
+    let anyError = false;
 
     for (const entry of targets) {
       const query = entry.token;
@@ -132,6 +133,7 @@ program
           console.log(`[clean] "${entry.label}" (${entry.id}): no matches on GitHub code search`);
         }
       } catch (err) {
+        anyError = true;
         const message = err instanceof Error ? err.message : String(err);
         await appendLogEntry(opts.log, {
           checkedAt,
@@ -163,7 +165,13 @@ program
 
     console.log(`\nAudit log updated at ${opts.log}`);
     if (anyHit) {
+      // Confirmed leak(s) take priority over errors: 2 is reserved for this.
       process.exitCode = 2;
+    } else if (anyError) {
+      // Distinguish "clean" from "the tool couldn't actually check anything"
+      // (e.g. missing/expired GITHUB_TOKEN, all requests 401ing) so cron/CI
+      // callers don't mistake a broken check run for a clean one.
+      process.exitCode = 1;
     }
   });
 

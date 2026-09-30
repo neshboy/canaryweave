@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { loadJsonStore, saveJsonStore, type VersionedEntries } from "./jsonStore.js";
 
 /** One check attempt against one canary token, recorded for the audit trail. */
 export interface CheckLogEntry {
@@ -23,43 +22,16 @@ export interface CheckLogEntry {
   error?: string;
 }
 
-export interface CanaryLogData {
-  version: 1;
-  entries: CheckLogEntry[];
-}
-
-function emptyLog(): CanaryLogData {
-  return { version: 1, entries: [] };
-}
+export type CanaryLogData = VersionedEntries<CheckLogEntry>;
 
 /** Load the audit log from `path`, returning an empty log if it does not exist yet. */
 export async function loadLog(path: string): Promise<CanaryLogData> {
-  let raw: string;
-  try {
-    raw = await readFile(path, "utf8");
-  } catch (err: unknown) {
-    if (isNodeError(err) && err.code === "ENOENT") {
-      return emptyLog();
-    }
-    throw err;
-  }
-
-  if (raw.trim() === "") {
-    return emptyLog();
-  }
-
-  const parsed = JSON.parse(raw) as Partial<CanaryLogData>;
-  if (!parsed || !Array.isArray(parsed.entries)) {
-    throw new Error(`Log file at ${path} is malformed: missing "entries" array`);
-  }
-  return { version: 1, entries: parsed.entries };
+  return loadJsonStore<CheckLogEntry>(path, "Log");
 }
 
 /** Persist the audit log to `path`, creating parent directories as needed. */
 export async function saveLog(path: string, data: CanaryLogData): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const serialized = JSON.stringify(data, null, 2) + "\n";
-  await writeFile(path, serialized, "utf8");
+  return saveJsonStore(path, data);
 }
 
 /** Append `entry` to the audit log stored at `path` and persist it. */
@@ -68,8 +40,4 @@ export async function appendLogEntry(path: string, entry: CheckLogEntry): Promis
   log.entries.push(entry);
   await saveLog(path, log);
   return log;
-}
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && "code" in err;
 }
