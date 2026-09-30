@@ -22,6 +22,9 @@
 
 const GITHUB_API_BASE = "https://api.github.com";
 
+/** Abort a code search request if the API hasn't responded within this long. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
+
 export interface GithubCodeSearchItem {
   path: string;
   repository: string;
@@ -95,11 +98,23 @@ export function parseCodeSearchResponse(data: unknown): GithubCodeSearchResult {
 export async function searchGithubCode(
   token: string,
   githubToken?: string,
+  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS,
 ): Promise<GithubCodeSearchResult> {
   const url = buildCodeSearchUrl(token);
   const headers = buildCodeSearchHeaders(githubToken);
 
-  const response = await fetch(url, { headers });
+  let response: Response;
+  try {
+    response = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (err) {
+    if (err instanceof Error && err.name === "TimeoutError") {
+      throw new GithubSearchError(
+        `GitHub code search timed out after ${timeoutMs}ms`,
+        0,
+      );
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const body = await response.text().catch(() => undefined);

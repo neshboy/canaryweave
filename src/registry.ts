@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
 import { generateCanaryToken } from "./token.js";
+import { loadJsonStore, saveJsonStore, type VersionedEntries } from "./jsonStore.js";
 
 /** Where a canary token was planted. */
 export interface SeedRecord {
@@ -28,14 +27,7 @@ export interface CanaryEntry {
 }
 
 /** On-disk shape of the registry file. */
-export interface RegistryData {
-  version: 1;
-  entries: CanaryEntry[];
-}
-
-function emptyRegistry(): RegistryData {
-  return { version: 1, entries: [] };
-}
+export type RegistryData = VersionedEntries<CanaryEntry>;
 
 /**
  * Load the registry from `path`. If the file does not exist yet, returns an
@@ -43,32 +35,12 @@ function emptyRegistry(): RegistryData {
  * than throwing.
  */
 export async function loadRegistry(path: string): Promise<RegistryData> {
-  let raw: string;
-  try {
-    raw = await readFile(path, "utf8");
-  } catch (err: unknown) {
-    if (isNodeError(err) && err.code === "ENOENT") {
-      return emptyRegistry();
-    }
-    throw err;
-  }
-
-  if (raw.trim() === "") {
-    return emptyRegistry();
-  }
-
-  const parsed = JSON.parse(raw) as Partial<RegistryData>;
-  if (!parsed || !Array.isArray(parsed.entries)) {
-    throw new Error(`Registry file at ${path} is malformed: missing "entries" array`);
-  }
-  return { version: 1, entries: parsed.entries };
+  return loadJsonStore<CanaryEntry>(path, "Registry");
 }
 
 /** Persist `data` to `path`, creating parent directories as needed. */
 export async function saveRegistry(path: string, data: RegistryData): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const serialized = JSON.stringify(data, null, 2) + "\n";
-  await writeFile(path, serialized, "utf8");
+  return saveJsonStore(path, data);
 }
 
 /**
@@ -118,8 +90,4 @@ export function recordSeed(
   }
   entry.seededIn.push(seed);
   return entry;
-}
-
-function isNodeError(err: unknown): err is NodeJS.ErrnoException {
-  return err instanceof Error && "code" in err;
 }
